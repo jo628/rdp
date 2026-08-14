@@ -24,10 +24,13 @@ import sys
 import os
 import time
 
-# Matches the text between the LAST ["...   "] on a line.
-# Example match on: ...squarespace-commerce ["zz.com/xyz"]
-#   -> captures: zz.com/xyz
-PATTERN = re.compile(r'\["([^"]*)"\]')
+# Matches the content inside a ["..."] bracket, which may hold ONE value
+# or SEVERAL comma-separated quoted values, e.g.:
+#   ["zz.com/xyz"]                                  -> one value
+#   ["a.com/1","a.com/2","a.com/3"]                 -> three values
+# The captured group is everything between the first and last quote inside
+# the brackets; individual values are then split on the `","` separator.
+PATTERN = re.compile(r'\["(.*)"\]')
 
 PROGRESS_EVERY = 500_000  # print a progress update every N lines
 
@@ -63,10 +66,12 @@ def extract_unique_sorted(input_path):
 
             match = PATTERN.search(line)
             if match:
-                value = match.group(1).strip()
-                if value:
-                    results.add(value)
-                    matched_lines += 1
+                # Split on the separator between quoted values: ","
+                for value in match.group(1).split('","'):
+                    value = value.strip()
+                    if value:
+                        results.add(value)
+                matched_lines += 1
 
             if total_lines % PROGRESS_EVERY == 0:
                 elapsed = time.time() - start_time
